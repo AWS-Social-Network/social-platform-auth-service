@@ -9,6 +9,8 @@ permissions:
   contents: read
 
 env:
+  # Prefer repo Variable "AWS_REGION"; otherwise us-east-1 (override if your EKS/ECR live elsewhere)
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
   ECR_REPOSITORY: auth-service
   K8S_DEPLOYMENT: auth-service
   K8S_CONTAINER: auth-service
@@ -23,7 +25,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - id: ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -43,7 +45,7 @@ jobs:
           version: "v1.30.0"
 
       - name: kubeconfig
-        run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ vars.AWS_REGION }}"
+        run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
 
       - name: Rollout new image
         run: |
