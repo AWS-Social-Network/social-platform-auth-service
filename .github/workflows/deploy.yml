@@ -31,8 +31,21 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: false
 
-      - id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+      - name: Manual ECR Login (LocalStack)
+        id: ecr
+        run: |
+          # Define the LocalStack Registry URL
+          REGISTRY="000000000000.dkr.ecr.${{ env.AWS_REGION }}.localhost.localstack.cloud:4566"
+          
+          # Create the repo if it doesn't exist (LocalStack specific safety)
+          aws --endpoint-url=${{ env.AWS_ENDPOINT_URL }} ecr create-repository --repository-name ${{ env.ECR_REPOSITORY }} || true
+          
+          # Login to Docker
+          aws --endpoint-url=${{ env.AWS_ENDPOINT_URL }} ecr get-login-password --region ${{ env.AWS_REGION }} | \
+          docker login --username AWS --password-stdin $REGISTRY
+          
+          # Export for next steps
+          echo "registry=$REGISTRY" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
         env:
@@ -49,7 +62,9 @@ jobs:
           version: "v1.30.0"
 
       - name: kubeconfig
-        run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
+        run: |
+          # You MUST provide the endpoint URL to the AWS CLI here as well
+          aws --endpoint-url=${{ env.AWS_ENDPOINT_URL }} eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
 
       - name: Rollout new image
         run: |
