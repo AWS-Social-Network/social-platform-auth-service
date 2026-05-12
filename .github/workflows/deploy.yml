@@ -22,8 +22,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - uses: AWS-Social-Network/social-platform-miscellaneous/.github/actions/tailscale.yml@main   
+
+      - uses: actions/checkout@v4
+        with:
+          repository: AWS-Social-Network/social-platform-miscellaneous
+          path: .github/utils-repo
+          token: ${{ secrets.GH_PAT }} 
+          
+      - uses: ./.github/utils-repo/.github/actions/tailscale.yml
+        env:
+          TS_OAUTH_ID: ${{ secrets.TS_OAUTH_ID }}
+          TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
