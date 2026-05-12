@@ -3,13 +3,14 @@ name: Build and deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
 
 env:
-  # Prefer repo Variable "AWS_REGION"; otherwise us-east-1 (override if your EKS/ECR live elsewhere)
+  AWS_ENDPOINT_URL: ${{ secrets.LOCALSTACK_ENDPOINT }}
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
   ECR_REPOSITORY: auth-service
   K8S_DEPLOYMENT: auth-service
@@ -17,18 +18,34 @@ env:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: test
+          aws-secret-access-key: test
           aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: false
 
-      - id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+      - name: ECR login and create repo if missing
+        id: ecr
+        run: |
+          REGISTRY="000000000000.dkr.ecr.${{ env.AWS_REGION }}.localhost.localstack.cloud:4566"
+
+          aws --endpoint-url="${{ env.AWS_ENDPOINT_URL }}" \
+            ecr create-repository \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --region "${{ env.AWS_REGION }}" 2>/dev/null || true
+
+          aws --endpoint-url="${{ env.AWS_ENDPOINT_URL }}" \
+            ecr get-login-password \
+            --region "${{ env.AWS_REGION }}" | \
+            docker login --username AWS --password-stdin "$REGISTRY"
+
+          echo "registry=$REGISTRY" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
         env:
@@ -44,10 +61,17 @@ jobs:
         with:
           version: "v1.30.0"
 
-      - name: kubeconfig
-        run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
-
       - name: Rollout new image
         run: |
-          kubectl -n default set image "deployment/$K8S_DEPLOYMENT" "$K8S_CONTAINER=$IMAGE_URI" --record
-          kubectl -n default rollout status "deployment/$K8S_DEPLOYMENT" --timeout=5m
+          # --record is removed in kubectl v1.30 — use an annotation instead
+          kubectl -n default annotate deployment "$K8S_DEPLOYMENT" \
+            kubernetes.io/change-cause="deploy $IMAGE_URI commit=${{ github.sha }}" \
+            --overwrite
+
+          kubectl -n default set image \
+            "deployment/$K8S_DEPLOYMENT" \
+            "$K8S_CONTAINER=$IMAGE_URI"
+
+          kubectl -n default rollout status \
+            "deployment/$K8S_DEPLOYMENT" \
+            --timeout=5m
