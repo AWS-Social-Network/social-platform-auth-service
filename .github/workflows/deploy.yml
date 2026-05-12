@@ -10,6 +10,7 @@ permissions:
 
 env:
   # Prefer repo Variable "AWS_REGION"; otherwise us-east-1 (override if your EKS/ECR live elsewhere)
+  AWS_ENDPOINT_URL: ${{ secrets.LOCALSTACK_ENDPOINT }}
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
   ECR_REPOSITORY: auth-service
   K8S_DEPLOYMENT: auth-service
