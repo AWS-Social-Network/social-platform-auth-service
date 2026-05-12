@@ -18,8 +18,8 @@ env:
   K8S_CONTAINER: auth-service
 
 jobs:
-  call-tailscale:
-    uses: AWS-Social-Network/social-platform-miscellaneous/.github/workflows/tailscale-reusable.yml@main
+  connect-tailscale:
+    uses: AWS-Social-Network/social-platform-miscellaneous/.github/workflows/tailscale.yaml@main
     secrets: inherit
   deploy:
     runs-on: ubuntu-latest
