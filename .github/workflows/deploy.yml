@@ -61,39 +61,6 @@ jobs:
         with:
           version: "v1.30.0"
 
-      - name: Configure kubeconfig for LocalStack EKS
-        run: |
-          # Pull the kubeconfig from LocalStack
-          aws --endpoint-url="${{ env.AWS_ENDPOINT_URL }}" \
-            eks update-kubeconfig \
-            --name "${{ secrets.EKS_CLUSTER_NAME }}" \
-            --region "${{ env.AWS_REGION }}"
-
-          # LocalStack's update-kubeconfig writes a server URL that points back
-          # to the real AWS endpoint — we need to patch it to point at LocalStack.
-          # The embedded k3s API server is exposed on LocalStack's port 6443.
-          LOCALSTACK_HOST=$(echo "${{ env.AWS_ENDPOINT_URL }}" | sed 's|https\?://||' | cut -d: -f1)
-
-          kubectl config set-cluster \
-            "$(kubectl config current-context)" \
-            --server="https://$LOCALSTACK_HOST:6443"
-
-          # LocalStack's EKS cluster uses a self-signed cert — skip TLS verify locally
-          kubectl config set-cluster \
-            "$(kubectl config current-context)" \
-            --insecure-skip-tls-verify=true
-
-          # Confirm we can reach the cluster before proceeding
-          kubectl cluster-info
-          kubectl get nodes
-
-      - name: Ensure deployment exists before rollout
-        run: |
-          if ! kubectl -n default get deployment "$K8S_DEPLOYMENT" > /dev/null 2>&1; then
-            echo "Deployment $K8S_DEPLOYMENT not found in namespace default — apply your manifests first."
-            exit 1
-          fi
-
       - name: Rollout new image
         run: |
           # --record is removed in kubectl v1.30 — use an annotation instead
