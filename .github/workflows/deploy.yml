@@ -10,7 +10,6 @@ permissions:
   contents: read
 
 env:
-  # Prefer repo Variable "AWS_REGION"; otherwise us-east-1 (override if your EKS/ECR live elsewhere)
   AWS_ENDPOINT_URL: ${{ secrets.LOCALSTACK_ENDPOINT }}
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
   ECR_REPOSITORY: auth-service
@@ -22,7 +21,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -31,20 +30,21 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: false
 
-      - name: Manual ECR Login (LocalStack)
+      - name: ECR login and create repo if missing
         id: ecr
         run: |
-          # Define the LocalStack Registry URL
           REGISTRY="000000000000.dkr.ecr.${{ env.AWS_REGION }}.localhost.localstack.cloud:4566"
-          
-          # Create the repo if it doesn't exist (LocalStack specific safety)
-          aws --endpoint-url=${{ env.AWS_ENDPOINT_URL }} ecr create-repository --repository-name ${{ env.ECR_REPOSITORY }} || true
-          
-          # Login to Docker
-          aws --endpoint-url=${{ env.AWS_ENDPOINT_URL }} ecr get-login-password --region ${{ env.AWS_REGION }} | \
-          docker login --username AWS --password-stdin $REGISTRY
-          
-          # Export for next steps
+
+          aws --endpoint-url="${{ env.AWS_ENDPOINT_URL }}" \
+            ecr create-repository \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --region "${{ env.AWS_REGION }}" 2>/dev/null || true
+
+          aws --endpoint-url="${{ env.AWS_ENDPOINT_URL }}" \
+            ecr get-login-password \
+            --region "${{ env.AWS_REGION }}" | \
+            docker login --username AWS --password-stdin "$REGISTRY"
+
           echo "registry=$REGISTRY" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
@@ -61,12 +61,50 @@ jobs:
         with:
           version: "v1.30.0"
 
-      - name: kubeconfig
+      - name: Configure kubeconfig for LocalStack EKS
         run: |
-          # You MUST provide the endpoint URL to the AWS CLI here as well
-          aws --endpoint-url=${{ env.AWS_ENDPOINT_URL }} eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
+          # Pull the kubeconfig from LocalStack
+          aws --endpoint-url="${{ env.AWS_ENDPOINT_URL }}" \
+            eks update-kubeconfig \
+            --name "${{ secrets.EKS_CLUSTER_NAME }}" \
+            --region "${{ env.AWS_REGION }}"
+
+          # LocalStack's update-kubeconfig writes a server URL that points back
+          # to the real AWS endpoint — we need to patch it to point at LocalStack.
+          # The embedded k3s API server is exposed on LocalStack's port 6443.
+          LOCALSTACK_HOST=$(echo "${{ env.AWS_ENDPOINT_URL }}" | sed 's|https\?://||' | cut -d: -f1)
+
+          kubectl config set-cluster \
+            "$(kubectl config current-context)" \
+            --server="https://$LOCALSTACK_HOST:6443"
+
+          # LocalStack's EKS cluster uses a self-signed cert — skip TLS verify locally
+          kubectl config set-cluster \
+            "$(kubectl config current-context)" \
+            --insecure-skip-tls-verify=true
+
+          # Confirm we can reach the cluster before proceeding
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Ensure deployment exists before rollout
+        run: |
+          if ! kubectl -n default get deployment "$K8S_DEPLOYMENT" > /dev/null 2>&1; then
+            echo "Deployment $K8S_DEPLOYMENT not found in namespace default — apply your manifests first."
+            exit 1
+          fi
 
       - name: Rollout new image
         run: |
-          kubectl -n default set image "deployment/$K8S_DEPLOYMENT" "$K8S_CONTAINER=$IMAGE_URI" --record
-          kubectl -n default rollout status "deployment/$K8S_DEPLOYMENT" --timeout=5m
+          # --record is removed in kubectl v1.30 — use an annotation instead
+          kubectl -n default annotate deployment "$K8S_DEPLOYMENT" \
+            kubernetes.io/change-cause="deploy $IMAGE_URI commit=${{ github.sha }}" \
+            --overwrite
+
+          kubectl -n default set image \
+            "deployment/$K8S_DEPLOYMENT" \
+            "$K8S_CONTAINER=$IMAGE_URI"
+
+          kubectl -n default rollout status \
+            "deployment/$K8S_DEPLOYMENT" \
+            --timeout=5m
