@@ -6,8 +6,8 @@ from app.schemas.auth import (
     ValidateResponse,
 )
 
-from deps.get_auth import AuthServiceDep
-from deps.get_current_user import CurrentUserDep
+from app.deps.get_auth import AuthServiceDep
+from app.deps.get_current_user import CurrentUserDep
 from fastapi import APIRouter, status
 
 router = APIRouter(prefix="/auth", tags=["Auth"])

@@ -1,6 +1,6 @@
 from pydantic import EmailStr
 
-from models.auth import User
+from app.models.auth import User
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

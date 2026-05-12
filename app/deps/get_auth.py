@@ -1,7 +1,7 @@
 from typing import Annotated
 
-from deps.get_db import get_db
-from services import AuthService
+from app.deps.get_db import get_db
+from app.services import AuthService
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -1,6 +1,6 @@
-from repositories import AuthRepo
-from schemas.auth import RegisterRequest, RegisterResponse, LoginRequest, TokenResponse
-from models.auth import User
+from app.repositories import AuthRepo
+from app.schemas.auth import RegisterRequest, RegisterResponse, LoginRequest, TokenResponse
+from app.models.auth import User
 from app.core.security import (
     create_access_token,
     hash_password,
