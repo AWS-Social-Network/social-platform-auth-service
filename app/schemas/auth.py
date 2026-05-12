@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -18,7 +20,7 @@ class TokenResponse(BaseModel):
 
 
 class RegisterResponse(BaseModel):
-    user_id: str
+    user_id: UUID
     username: str
 
 
