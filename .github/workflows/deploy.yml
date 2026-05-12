@@ -30,8 +30,10 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: test
+          aws-secret-access-key: test
           aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: false
 
       - id: ecr
         uses: aws-actions/amazon-ecr-login@v2
