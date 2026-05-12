@@ -1,10 +1,10 @@
-from core.database import health_check_db
+from app.core.database import health_check_db
 
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
-
 router = APIRouter(prefix="/health", tags=["Health"])
+
 
 @router.get("/")
 async def health():

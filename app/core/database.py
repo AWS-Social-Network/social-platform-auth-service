@@ -1,7 +1,7 @@
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from core.config import settings
+from app.core.config import settings
 
 engine = create_async_engine(
     settings.database_url,
@@ -15,9 +15,7 @@ async def init_db() -> None:
     """Create auth schema and users table if missing."""
     async with engine.begin() as conn:
         await conn.execute(text("CREATE SCHEMA IF NOT EXISTS auth"))
-        await conn.execute(
-            text(
-                """
+        await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS auth.users (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     username TEXT NOT NULL UNIQUE,
@@ -25,9 +23,8 @@ async def init_db() -> None:
                     hashed_password TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
-                """
-            )
-        )
+                """))
+
 
 async def health_check_db() -> bool:
     try:
