@@ -56,10 +56,10 @@ jobs:
           aws eks update-kubeconfig \
             --name yasna-localstack-cluster \
             --region $AWS_REGION
+            --endpoint-url $AWS_ENDPOINT_URL
 
       - name: Rollout new image
         run: |
-          # --record is removed in kubectl v1.30 — use an annotation instead
           kubectl -n default annotate deployment "$K8S_DEPLOYMENT" \
             kubernetes.io/change-cause="deploy $IMAGE_URI commit=${{ github.sha }}" \
             --overwrite
