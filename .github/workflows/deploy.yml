@@ -12,7 +12,7 @@ permissions:
 env:
   AWS_ENDPOINT_URL: ${{ secrets.LOCALSTACK_ENDPOINT }}
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-  ECR_REPOSITORY: ${{ secrets.ECR_REPO }}          # ← your single Terraform-managed repo name
+  ECR_REPOSITORY: ${{ secrets.ECR_REPO }}
   ECR_IMAGE_NAME: auth-service
   K8S_DEPLOYMENT: auth-service
   K8S_CONTAINER: auth-service
