@@ -73,8 +73,7 @@ jobs:
             --overwrite
           kubectl -n $K8S_NAMESPACE set image \
             "deployment/$K8S_DEPLOYMENT" \
-            "$K8S_CONTAINER=$IMAGE_URI" \
-            ""
+            "$K8S_CONTAINER=$IMAGE_URI"
           kubectl -n $K8S_NAMESPACE rollout status \
             "deployment/$K8S_DEPLOYMENT" \
             --timeout=5m
