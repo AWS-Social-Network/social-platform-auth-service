@@ -30,19 +30,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           mask-aws-account-id: false
 
-      - name: ECR login and create repo if missing
-        id: ecr
-        run: |
-          REGISTRY="000000000000.dkr.ecr.${{ env.AWS_REGION }}.100.103.114.31:4566"
-          aws --endpoint-url="${{ env.AWS_ENDPOINT_URL }}" \
-            ecr create-repository \
-            --repository-name "${{ env.ECR_REPOSITORY }}" \
-            --region "${{ env.AWS_REGION }}" 2>/dev/null || true
-          aws --endpoint-url="${{ env.AWS_ENDPOINT_URL }}" \
-            ecr get-login-password \
-            --region "${{ env.AWS_REGION }}" | \
-            docker login --username AWS --password-stdin "$REGISTRY"
-          echo "registry=$REGISTRY" >> "$GITHUB_OUTPUT"
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Build and push image
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
