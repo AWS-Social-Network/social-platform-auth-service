@@ -14,6 +14,7 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPO }}
   ECR_IMAGE_NAME: auth-service
+  K8S_NAMESPACE: social-app
   K8S_DEPLOYMENT: auth-service
   K8S_CONTAINER: auth-service
 
@@ -60,12 +61,12 @@ jobs:
 
       - name: Rollout new image
         run: |
-          kubectl -n default annotate deployment "$K8S_DEPLOYMENT" \
+          kubectl -n $K8S_NAMESPACE annotate deployment "$K8S_DEPLOYMENT" \
             kubernetes.io/change-cause="deploy $IMAGE_URI commit=${{ github.sha }}" \
             --overwrite
-          kubectl -n default set image \
+          kubectl -n $K8S_NAMESPACE set image \
             "deployment/$K8S_DEPLOYMENT" \
             "$K8S_CONTAINER=$IMAGE_URI"
-          kubectl -n default rollout status \
+          kubectl -n $K8S_NAMESPACE rollout status \
             "deployment/$K8S_DEPLOYMENT" \
             --timeout=5m
