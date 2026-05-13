@@ -51,6 +51,11 @@ jobs:
         uses: azure/setup-kubectl@v4
         with:
           version: "v1.30.0"
+      - name: Configure kubeconfig          # <-- add this before rollout
+        run: |
+          aws eks update-kubeconfig \
+            --name yasna-localstack-cluster \
+            --region $AWS_REGION
 
       - name: Rollout new image
         run: |
