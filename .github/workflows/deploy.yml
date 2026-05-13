@@ -56,8 +56,7 @@ jobs:
         run: |
           aws eks update-kubeconfig \
             --name yasna-localstack-cluster \
-            --region $AWS_REGION \
-            --endpoint-url $AWS_ENDPOINT_URL
+            --region $AWS_REGION
 
       - name: Rollout new image
         run: |
