@@ -50,12 +50,13 @@ jobs:
         uses: azure/setup-kubectl@v4
         with:
           version: "v1.30.0"
-      - name: Configure kubeconfig          # <-- add this before rollout
+      - name: Configure kubeconfig
         run: |
           aws eks update-kubeconfig \
             --name yasna-localstack-cluster \
             --region $AWS_REGION
-      - name: Create or update Kubernetes secrets      # <-- new step
+            
+      - name: Create or update Kubernetes secrets
         env:
           DATABASE_URL: ${{ secrets.RDS_DATABASE_URL }}
           SECRET_KEY: ${{ secrets.RDS_SECRET_KEY }}
