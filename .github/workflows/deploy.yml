@@ -33,6 +33,9 @@ jobs:
 
       - id: ecr
         uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registries: "000000000000"
+          registry-type: private
 
       - name: Build and push image
         env:
