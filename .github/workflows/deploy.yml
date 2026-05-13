@@ -33,9 +33,16 @@ jobs:
       - name: ECR login and create repo if missing
         id: ecr
         run: |
-          REGISTRY="localhost:4510/yasna-localstack-repo"
+          REGISTRY="000000000000.dkr.ecr.${{ env.AWS_REGION }}.localhost.localstack.cloud:4566"
+          aws --endpoint-url="${{ env.AWS_ENDPOINT_URL }}" \
+            ecr create-repository \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --region "${{ env.AWS_REGION }}" 2>/dev/null || true
+          aws --endpoint-url="${{ env.AWS_ENDPOINT_URL }}" \
+            ecr get-login-password \
+            --region "${{ env.AWS_REGION }}" | \
+            docker login --username AWS --password-stdin "$REGISTRY"
           echo "registry=$REGISTRY" >> "$GITHUB_OUTPUT"
-
       - name: Build and push image
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
@@ -44,7 +51,6 @@ jobs:
           docker build -t "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" .
           docker push "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "IMAGE_URI=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_ENV"
-
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
         with:
@@ -56,11 +62,9 @@ jobs:
           kubectl -n default annotate deployment "$K8S_DEPLOYMENT" \
             kubernetes.io/change-cause="deploy $IMAGE_URI commit=${{ github.sha }}" \
             --overwrite
-
           kubectl -n default set image \
             "deployment/$K8S_DEPLOYMENT" \
             "$K8S_CONTAINER=$IMAGE_URI"
-
           kubectl -n default rollout status \
             "deployment/$K8S_DEPLOYMENT" \
             --timeout=5m
